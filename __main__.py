@@ -2,6 +2,8 @@ from collections import namedtuple
 import argparse
 import cv2
 import re
+import time
+import sys
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -94,72 +96,52 @@ if __name__ == '__main__':
         if config['geometry'].width + config['geometry'].x > vWidth or config['geometry'].height + config['geometry'].y > vHeight:
             raise ValueError('Geometry is out of bounds from video')
 
-        playback = True
-        forceUpdate = False
-        thresholdMode = True
-        frameUpdated = False
+        file = open(config['output'], 'w') if config['output'] else None
+        if file is not None: file.write('frame;value\n') # CSV header
 
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
-
-        cv2.namedWindow('debug', cv2.WINDOW_NORMAL)
-        def position_change(position):
-            global forceUpdate
-            capture.set(cv2.CAP_PROP_POS_FRAMES, position)
-            forceUpdate = True
-
-        capture.set(cv2.CAP_PROP_POS_FRAMES, 264792)
-        playback = False
-
-        cv2.createTrackbar('videopos', 'debug', int(capture.get(cv2.CAP_PROP_POS_FRAMES)), vFrames, position_change)
+        
+        lastDebug = time.time()
+        lastPeriod = 30.0 # every 30 seconds
+        lastProcessed = 0
+        totalProcesed = 0
 
         while(capture.isOpened):
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                break
-            elif key == ord(' '):
-                playback = not playback
-                cv2.setTrackbarPos('videopos', 'debug', framepos)
-            elif key == ord('a'):
-                thresholdMode = not thresholdMode
-                forceUpdate = True
-            elif key == 81:
-                capture.set(cv2.CAP_PROP_POS_FRAMES, framepos - 1)
-                cv2.setTrackbarPos('videopos', 'debug', int(capture.get(cv2.CAP_PROP_POS_FRAMES)))
-            elif key == 83:
-                capture.set(cv2.CAP_PROP_POS_FRAMES, framepos + 1)
-                cv2.setTrackbarPos('videopos', 'debug', int(capture.get(cv2.CAP_PROP_POS_FRAMES)))
+            framepos = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
+            if framepos == vFrames: break
+            ret, frame = capture.read()
 
-            if forceUpdate:
-                ret, frame = capture.retrieve()
-                frameUpdated = True
-                forceUpdate = False
-            elif playback:
-                if int(capture.get(cv2.CAP_PROP_POS_FRAMES)) == vFrames:
-                    capture.set(cv2.CAP_PROP_POS_FRAMES, 0) # loop dont't crash onegai/bitte/please
-                ret, frame = capture.read()
-                frameUpdated = True
-            framepos = int(capture.get(cv2.CAP_PROP_POS_FRAMES)) # update the expected value
+            # the "Save" button lights up brightly upon clicking, so checking every frame that it happens
+            # Game is running on 30 FPS so technically we shouldn't miss it even with a 720p30 stream
+            # The threshold values are 200, which is *very* lax, so I expect some incorrect detections.
+            ret, gray = cv2.threshold(cv2.cvtColor(frame[
+                config['geometry'].y:config['geometry'].y+config['geometry'].height,
+                config['geometry'].x:config['geometry'].x+config['geometry'].width
+            ], cv2.COLOR_RGB2GRAY), 200, 255, cv2.THRESH_BINARY)
+            cropped = cv2.dilate(gray, kernel) # To fill in small pixel-gaps due to compression
+            value = cv2.sumElems(cropped)[0] / (config['geometry'].width * config['geometry'].height)
 
-            # calculation of bright parts
-            if frameUpdated:
-                ret, gray = cv2.threshold(cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY), 230, 255, cv2.THRESH_BINARY)
-                cropped = cv2.dilate(gray[
-                    config['geometry'].y:config['geometry'].y+config['geometry'].height,
-                    config['geometry'].x:config['geometry'].x+config['geometry'].width
-                ], kernel)
-                value = cv2.sumElems(cropped)[0] / (config['geometry'].width * config['geometry'].height)
+            # If the value is triggered, just print out the value
+            if value >= 250.0:
+                line = f'{framepos};{value}'
+                if file is not None: file.write(f'{line}\n')
+                else: print(line)
 
-                if thresholdMode:
-                    gray = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
-                    cv2.putText(gray, 'threshold_mode', (0, vHeight), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.0, (255, 255, 0), 1, cv2.LINE_AA)
-                    frame = gray
+            # Debug so we don't get insane
+            lastProcessed = lastProcessed + 1
+            totalProcesed = totalProcesed + 1
+            currTime = time.time()
+            if currTime - lastDebug >= lastPeriod:
+                print(f'[DBG] Processed {totalProcesed}/{vFrames} frames ({(float(lastProcessed) / lastPeriod):.2f} FPS)', file=sys.stderr)
+                lastProcessed = 0
+                lastDebug = currTime
 
-                cv2.putText(frame, str(value), (0, 24), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.0, (255, 255, 0), 1, cv2.LINE_AA)
-                cv2.rectangle(frame, (config['geometry'].x, config['geometry'].y), (config['geometry'].x + config['geometry'].width, config['geometry'].y + config['geometry'].height), (0, 255, 0), 2)
-            
-            frameUpdated = False
-            cv2.imshow('debug', frame)
-        pass
+
+            # cv2.imshow('frame', frame)
+            # key = cv2.waitKey(1) & 0xFF
+            # if key == ord('q'):
+            #     break
+        file.close()
 
     # cleanup
     capture.release()
