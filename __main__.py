@@ -4,11 +4,15 @@ import cv2
 import re
 import time
 import sys
+import os
+import numpy as np
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-g', '--geometry', required=True, type=str, help='Geometry in pixels where the dialog should appear (WxH+X+Y)')
     parser.add_argument('-i', '--input', required=True, type=str, help='Input video file or a still frame')
+    parser.add_argument('-ss', '--start', default=0, type=int, help='Start from this frame')
+    parser.add_argument('-n', '--threads', default=None, type=int, help='How many CPU threads to use. (Defaults to all)')
     parser.add_argument('output', nargs='?', type=str, help='Path to output detected timestamps. Defaults to stdout.', default=None)
     args = parser.parse_args()
 
@@ -17,7 +21,9 @@ if __name__ == '__main__':
         'mode': None,
         'geometry': None,
         'input': args.input,
-        'output': args.output
+        'output': args.output,
+        'start': args.start,
+        'threads': None
     }
 
     # special mode for picking the geometry from video using GUI
@@ -36,9 +42,11 @@ if __name__ == '__main__':
 
         config['mode'] = 'process'
         config['geometry'] = namedtuple('Geometry', ['width', 'height', 'x', 'y'])(width, height, x, y)
+        config['threads'] = config['threads'] if config['threads'] is not None else os.cpu_count()
 
     # load the given video
     capture: cv2.VideoCapture = cv2.VideoCapture(config['input'])
+    capture.set(cv2.CAP_PROP_POS_FRAMES, config['start'])
     vWidth, vHeight = (int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
     vFrames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
 
@@ -96,35 +104,62 @@ if __name__ == '__main__':
         if config['geometry'].width + config['geometry'].x > vWidth or config['geometry'].height + config['geometry'].y > vHeight:
             raise ValueError('Geometry is out of bounds from video')
 
+        # set the output
         file = open(config['output'], 'w') if config['output'] else None
         if file is not None: file.write('frame;value\n') # CSV header
 
+        # kernel for fixing compression bias
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
         
-        lastDebug = time.time()
+        # debug outputting
+        startTime = time.time()
+        lastDebug = startTime
         lastPeriod = 30.0 # every 30 seconds
         lastProcessed = 0
-        totalProcesed = 0
+        totalProcesed = config['start']
 
+        frame = None
+        freeze = False
+        step = False
+
+        # set CPU thread count
+        cv2.setNumThreads(config['threads'])
+
+        # deconstruct the geometry again...
+        width, height, x, y = config['geometry']
+        geometry_pixelarea = width * height
+
+        # process per-frame
         while(capture.isOpened):
-            framepos = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
+            framepos = totalProcesed # int(capture.get(cv2.CAP_PROP_POS_FRAMES))
             if framepos == vFrames: break
-            ret, frame = capture.read()
+            
+            if frame is None or step or not freeze: ret, frame = capture.read()
+            if step: step = False
 
             # the "Save" button lights up brightly upon clicking, so checking every frame that it happens
             # Game is running on 30 FPS so technically we shouldn't miss it even with a 720p30 stream
             # The threshold values are 200, which is *very* lax, so I expect some incorrect detections.
-            ret, gray = cv2.threshold(cv2.cvtColor(frame[
-                config['geometry'].y:config['geometry'].y+config['geometry'].height,
-                config['geometry'].x:config['geometry'].x+config['geometry'].width
-            ], cv2.COLOR_RGB2GRAY), 200, 255, cv2.THRESH_BINARY)
-            cropped = cv2.dilate(gray, kernel) # To fill in small pixel-gaps due to compression
-            value = cv2.sumElems(cropped)[0] / (config['geometry'].width * config['geometry'].height)
+            cropped = cv2.cvtColor(frame[
+                y:y+height,
+                x:x+width
+            ], cv2.COLOR_BGR2HSV)
+            # ret, gray = cv2.threshold(cv2.cvtColor(cropped, cv2.COLOR_RGB2GRAY), 200, 255, cv2.THRESH_BINARY)
+            gray = cv2.inRange(cropped, (20, 20, 200), (40, 40, 255))
+            # so the measured values RGB = 255, 30, 30 -> HSV? 
+            # so in BGR that'd be SVH...?
+
+            # cv2.imshow('frame', np.vstack([cropped, cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)]))
+
+            # To fill in small pixel-gaps due to compression
+            value = cv2.sumElems(cv2.dilate(gray, kernel))[0] / geometry_pixelarea
 
             # If the value is triggered, just print out the value
             if value >= 250.0:
                 line = f'{framepos};{value}'
-                if file is not None: file.write(f'{line}\n')
+                if file is not None:
+                    file.write(f'{line}\n')
+                    file.flush()
                 else: print(line)
 
             # Debug so we don't get insane
@@ -132,16 +167,22 @@ if __name__ == '__main__':
             totalProcesed = totalProcesed + 1
             currTime = time.time()
             if currTime - lastDebug >= lastPeriod:
-                print(f'[DBG] Processed {totalProcesed}/{vFrames} frames ({(float(lastProcessed) / lastPeriod):.2f} FPS)', file=sys.stderr)
+                rate = float(lastProcessed) / lastPeriod
+                eta = (vFrames - totalProcesed) / rate
+                relative = float(totalProcesed) / vFrames * 100.0
+                print(f'[DBG] ({relative:.2f}%) Processed {totalProcesed}/{vFrames} frames ({rate:.2f} FPS) (ETA: {eta:.2f} seconds)', file=sys.stderr)
                 lastProcessed = 0
                 lastDebug = currTime
 
-
-            # cv2.imshow('frame', frame)
             # key = cv2.waitKey(1) & 0xFF
             # if key == ord('q'):
             #     break
-        file.close()
+            # if key == ord('d'):
+            #     step = True
+            # if key == ord(' '):
+            #     freeze = not freeze
+        if file: file.close()
+        print(f'[DBG] Finished, it took {(time.time() - startTime):.2f} seconds', file=sys.stderr)
 
     # cleanup
     capture.release()
