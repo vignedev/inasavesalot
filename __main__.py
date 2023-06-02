@@ -24,12 +24,12 @@ if __name__ == '__main__':
     else:
         # check if the geometry is in a valid format
         match = re.findall(r'(\d+)x(\d+)\+(\d+)\+(\d+)', args.geometry)
-        if match is None or len(match) == 0 or len(match[0]) != 4:
+        if match is None or len(match) != 1 or len(match[0]) != 4:
             raise SyntaxError('Geometry argument is in an invalid format')
         width, height, x, y = [int(x) for x in match[0]]
 
         # ensure that it somewhat makes sense (logically)
-        if x < 0 or y < 0 or x > width or y > width or width < 0 or height < 0:
+        if x < 0 or y < 0 or width < 0 or height < 0:
             raise SyntaxError('Geometry values are invalid')
 
         config['mode'] = 'process'
@@ -88,10 +88,77 @@ if __name__ == '__main__':
                 break
             elif key == ord(' '):
                 playback = not playback
+                cv2.setTrackbarPos('videopos', 'picker', int(capture.get(cv2.CAP_PROP_POS_FRAMES)))
     elif config['mode'] == 'process':
         # validate geometry again
         if config['geometry'].width + config['geometry'].x > vWidth or config['geometry'].height + config['geometry'].y > vHeight:
             raise ValueError('Geometry is out of bounds from video')
+
+        playback = True
+        forceUpdate = False
+        thresholdMode = True
+        frameUpdated = False
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
+
+        cv2.namedWindow('debug', cv2.WINDOW_NORMAL)
+        def position_change(position):
+            global forceUpdate
+            capture.set(cv2.CAP_PROP_POS_FRAMES, position)
+            forceUpdate = True
+
+        capture.set(cv2.CAP_PROP_POS_FRAMES, 264792)
+        playback = False
+
+        cv2.createTrackbar('videopos', 'debug', int(capture.get(cv2.CAP_PROP_POS_FRAMES)), vFrames, position_change)
+
+        while(capture.isOpened):
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+            elif key == ord(' '):
+                playback = not playback
+                cv2.setTrackbarPos('videopos', 'debug', framepos)
+            elif key == ord('a'):
+                thresholdMode = not thresholdMode
+                forceUpdate = True
+            elif key == 81:
+                capture.set(cv2.CAP_PROP_POS_FRAMES, framepos - 1)
+                cv2.setTrackbarPos('videopos', 'debug', int(capture.get(cv2.CAP_PROP_POS_FRAMES)))
+            elif key == 83:
+                capture.set(cv2.CAP_PROP_POS_FRAMES, framepos + 1)
+                cv2.setTrackbarPos('videopos', 'debug', int(capture.get(cv2.CAP_PROP_POS_FRAMES)))
+
+            if forceUpdate:
+                ret, frame = capture.retrieve()
+                frameUpdated = True
+                forceUpdate = False
+            elif playback:
+                if int(capture.get(cv2.CAP_PROP_POS_FRAMES)) == vFrames:
+                    capture.set(cv2.CAP_PROP_POS_FRAMES, 0) # loop dont't crash onegai/bitte/please
+                ret, frame = capture.read()
+                frameUpdated = True
+            framepos = int(capture.get(cv2.CAP_PROP_POS_FRAMES)) # update the expected value
+
+            # calculation of bright parts
+            if frameUpdated:
+                ret, gray = cv2.threshold(cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY), 230, 255, cv2.THRESH_BINARY)
+                cropped = cv2.dilate(gray[
+                    config['geometry'].y:config['geometry'].y+config['geometry'].height,
+                    config['geometry'].x:config['geometry'].x+config['geometry'].width
+                ], kernel)
+                value = cv2.sumElems(cropped)[0] / (config['geometry'].width * config['geometry'].height)
+
+                if thresholdMode:
+                    gray = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+                    cv2.putText(gray, 'threshold_mode', (0, vHeight), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.0, (255, 255, 0), 1, cv2.LINE_AA)
+                    frame = gray
+
+                cv2.putText(frame, str(value), (0, 24), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.0, (255, 255, 0), 1, cv2.LINE_AA)
+                cv2.rectangle(frame, (config['geometry'].x, config['geometry'].y), (config['geometry'].x + config['geometry'].width, config['geometry'].y + config['geometry'].height), (0, 255, 0), 2)
+            
+            frameUpdated = False
+            cv2.imshow('debug', frame)
         pass
 
     # cleanup

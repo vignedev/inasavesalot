@@ -14,6 +14,14 @@ This project is specifically tailored to detect the BoTW saving dialog and it is
 $ python3 main.py 
 ```
 
+The data I collected used 720p30, given that the part I am monitoring should be fairly distinguishable even under lower bitrate and resolution. To do this, I used `yt-dlp` with as following:
+
+```console
+$ yt-dlp -S '+size' -f 'bestvideo[height=720]' -o '%(id)s.%(ext)s' <video_url>
+```
+
+After that, just plug it into the program itself and carry on.
+
 ## License
 
 MIT
