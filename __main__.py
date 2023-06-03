@@ -10,7 +10,7 @@ from datetime import timedelta
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-g', '--geometry', required=True, type=str, help='Geometry in pixels where the dialog should appear (WxH+X+Y)')
+    parser.add_argument('-g', '--geometry', required=True, type=str, help='Geometry in pixels where the dialog should appear (WxH+X+Y or "pick")')
     parser.add_argument('-i', '--input', required=True, type=str, help='Input video file or a still frame')
     parser.add_argument('-ss', '--start', default=0, type=int, help='Start from this frame')
     parser.add_argument('-n', '--threads', default=None, type=int, help='How many CPU threads to use. (Defaults to all)')

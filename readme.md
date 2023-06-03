@@ -20,7 +20,7 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -g GEOMETRY, --geometry GEOMETRY
-                        Geometry in pixels where the dialog should appear (WxH+X+Y)
+                        Geometry in pixels where the dialog should appear (WxH+X+Y or "pick")
   -i INPUT, --input INPUT
                         Input video file or a still frame
   -ss START, --start START
@@ -29,12 +29,23 @@ options:
                         How many CPU threads to use. (Defaults to all)
 ```
 
-For example:
+### Finding out the geometry
+
+This script works by checking every frame for the rectangle defined by the geometry and if it is filled completely white. To find this geometry, you can use the `-g pick`, which will open the video for you and allow you to seek through the video. Dragging your cursor will draw a rectangle in the window and print out the coordinates into your standard output. To close this window either CTRL+C out of there or press `q`. Pressing `space` will also pause the playback and `left`/`right` arrow keys move you frame by frame.
+
+### Running the script
+
+To run the script, just plug in the values as you need:
+
 ```console
 $ python3 __main__.py -g 247x36+515+412 -i o7BSE-74u8U_720.webm o7BSE-74u8U.csv -n 4
 ```
 
-## Source collection
+Once you are done, the output will be CSV formatted with a header, where the first column are the *frame position* and the second are the "*amount of brightness*", which should be between 250 and 255. Given that this box is also used for other UI elements, you might get some false positives such are attempting to load file etc. Also very bright areas might trigger itself as well.
+
+You will most likely need to filter through the values to remove neighboring detected frames.
+
+### Source collection
 
 The data I collected used 720p30, given that the part I am monitoring should be fairly distinguishable even under lower bitrate and resolution. To do this, I used `yt-dlp` with as following:
 
