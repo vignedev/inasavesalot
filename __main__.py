@@ -6,6 +6,7 @@ import time
 import sys
 import os
 import numpy as np
+from datetime import timedelta
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -93,12 +94,18 @@ if __name__ == '__main__':
             if rect['end'] is not None: cv2.rectangle(frame, rect['start'], rect['end'], (0, 255, 0), 2)
             cv2.imshow('picker', frame)
 
+            framepos = int(capture.get(cv2.CAP_PROP_POS_FRAMES))
+
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 break
             elif key == ord(' '):
                 playback = not playback
-                cv2.setTrackbarPos('videopos', 'picker', int(capture.get(cv2.CAP_PROP_POS_FRAMES)))
+                cv2.setTrackbarPos('videopos', 'picker', framepos)
+            elif key == 81:
+                cv2.setTrackbarPos('videopos', 'picker', framepos - 1)
+            elif key == 83:
+                cv2.setTrackbarPos('videopos', 'picker', framepos + 1)
     elif config['mode'] == 'process':
         # validate geometry again
         if config['geometry'].width + config['geometry'].x > vWidth or config['geometry'].height + config['geometry'].y > vHeight:
@@ -170,7 +177,7 @@ if __name__ == '__main__':
                 rate = float(lastProcessed) / lastPeriod
                 eta = (vFrames - totalProcesed) / rate
                 relative = float(totalProcesed) / vFrames * 100.0
-                print(f'[DBG] ({relative:.2f}%) Processed {totalProcesed}/{vFrames} frames ({rate:.2f} FPS) (ETA: {eta:.2f} seconds)', file=sys.stderr)
+                print(f'[DBG] ({relative:.2f}%) Processed {totalProcesed}/{vFrames} frames ({rate:.2f} FPS) (ETA: {str(timedelta(seconds=eta))} seconds)', file=sys.stderr)
                 lastProcessed = 0
                 lastDebug = currTime
 
