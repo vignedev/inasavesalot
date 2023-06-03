@@ -177,7 +177,7 @@ if __name__ == '__main__':
                 rate = float(lastProcessed) / lastPeriod
                 eta = (vFrames - totalProcesed) / rate
                 relative = float(totalProcesed) / vFrames * 100.0
-                print(f'[DBG] ({relative:.2f}%) Processed {totalProcesed}/{vFrames} frames ({rate:.2f} FPS) (ETA: {str(timedelta(seconds=eta))} seconds)', file=sys.stderr)
+                print(f'[DBG] ({relative:.2f}%) Processed {totalProcesed}/{vFrames} frames ({rate:.2f} FPS) (ETA: {str(timedelta(seconds=int(eta)))} seconds)', file=sys.stderr)
                 lastProcessed = 0
                 lastDebug = currTime
 
