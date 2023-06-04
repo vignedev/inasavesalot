@@ -78,20 +78,21 @@ window.onload = async e => {
 		return [ low, array[low] ];
 	}
 
-	setInterval(update_stats, 500) // check every half a second, we don't need maximum precision
+	setInterval(update_stats, 1000) // check every second, we don't need maximum precision
 
-	function get_wordy_time(seconds){
+	function get_wordy_time(seconds, suffix = ''){
 		// this is garbage, but it is... fixed hehe
 		if(seconds < 60) {
-			const n = seconds.toFixed(0)
-			return `${n == '1' ? 'a' : n} second${n == '1' ? '' : 's'}`
+			const n = Math.floor(seconds)
+			if(n == 0) return 'just now'
+			return `${n == 1 ? 'a' : n} second${n == 1 ? '' : 's'}${suffix}`
 		}
 		if(seconds >= 60 && seconds < 3600){
-			const n = (seconds / 60).toFixed(0)
-			return `${n == '1' ? 'a' : n} minute${n == '1' ? '' : 's'}`
+			const n = Math.floor(seconds / 60)
+			return `${n == 1 ? 'a' : n} minute${n == 1 ? '' : 's'}${suffix}`
 		}
-		const n = (seconds / 3600).toFixed(0)
-		return `${n == '1' ? 'an' : n} hour${n == '1' ? '' : 's'}`
+		const n = Math.floor(seconds / 3600)
+		return `${n == 1 ? 'an' : n} hour${n == 1 ? '' : 's'}${suffix}`
 	}
 
 	function update_stats(){
@@ -109,18 +110,18 @@ window.onload = async e => {
 			if(index == 0){ // first item
 				last_save.innerText = info.index == 0 ? 'never' : 'last stream'
 				last_save.onclick = null
-				next_save.innerText = `${get_wordy_time(closest - currentTime)}`
+				next_save.innerText = get_wordy_time(closest - currentTime)
 				next_save.onclick = e => player.seekTo(closest)
 			}else if(index == info.saves.length){ // last item
-				last_save.innerText = `${get_wordy_time(currentTime - info.saves[index-1])} ago`
+				last_save.innerText = get_wordy_time(currentTime - info.saves[index-1], ' ago')
 				last_save.onclick = e => player.seekTo(info.saves[index-1])
 				next_save.innerText = 'next stream'
 				next_save.onclick = null
 				newly_added = index
 			}else{ // middle
-				last_save.innerText = `${get_wordy_time(currentTime - info.saves[index-1])} ago`
+				last_save.innerText = get_wordy_time(currentTime - info.saves[index-1], ' ago')
 				last_save.onclick = e => player.seekTo(info.saves[index-1])
-				next_save.innerText = `${get_wordy_time(closest - currentTime)}`
+				next_save.innerText = get_wordy_time(closest - currentTime)
 				next_save.onclick = e => player.seekTo(closest)
 				newly_added = index
 			}
@@ -129,9 +130,9 @@ window.onload = async e => {
 		save_count.innerText = `${total} time${total == 1 ? '' : 's'}`
 
 		if(player.getPlayerState() == 5){
-			save_count_header.innerText = `TOTAL SAVES`
+			save_count_header.innerText = `THIS STREAM / TOTAL SAVES`
 			const total = info.start + info.saves.length
-			save_count.innerText = `${total} time${total == 1 ? '' : 's'}`
+			save_count.innerText = `${info.saves.length} / ${total} time${total == 1 ? '' : 's'}`
 		}else{
 			save_count_header.innerText = `CURRENTLY SAVED`
 		}

@@ -2,6 +2,7 @@ body{
 	display: flex;
 	justify-content: center;
 	background: rgb(113,98,54);
+	font-family: sans-serif;
 	/*background: linear-gradient(180deg, rgba(113,98,54,1) 0%, rgba(78,66,38,1) 100%);*/
 }
 
@@ -100,6 +101,7 @@ div.header {
 	flex-direction: column;
 	color: white;
 	font-style: italic;
+	font-family: serif;
 }
 div.header * {
 	user-select: none;
