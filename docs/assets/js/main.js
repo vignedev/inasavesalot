@@ -108,14 +108,20 @@ window.onload = async e => {
 
 			if(index == 0){ // first item
 				last_save.innerText = info.index == 0 ? 'never' : 'last stream'
+				last_save.onclick = null
 				next_save.innerText = `${get_wordy_time(closest - currentTime)}`
+				next_save.onclick = e => player.seekTo(closest)
 			}else if(index == info.saves.length){ // last item
 				last_save.innerText = `${get_wordy_time(currentTime - info.saves[index-1])} ago`
+				last_save.onclick = e => player.seekTo(info.saves[index-1])
 				next_save.innerText = 'next stream'
+				next_save.onclick = null
 				newly_added = index
 			}else{ // middle
 				last_save.innerText = `${get_wordy_time(currentTime - info.saves[index-1])} ago`
-				next_save.innerText = `${get_wordy_time(info.saves[index] - currentTime)}`
+				last_save.onclick = e => player.seekTo(info.saves[index-1])
+				next_save.innerText = `${get_wordy_time(closest - currentTime)}`
+				next_save.onclick = e => player.seekTo(closest)
 				newly_added = index
 			}
 		}
