@@ -55,11 +55,19 @@ window.onload = async e => {
 	select.onchange = e => load_video(e.target.value)
 
 	// if hash is present, then try to load it
-	const hashId = location.hash.substr(1)
-	if(data[hashId]){
-		select.value = hashId
-		load_video(hashId)
+	window.onhashchange = e => {
+		const hashId = location.hash.substr(1)
+		if(data[hashId]){
+			select.value = hashId
+			load_video(hashId)
+		}else{
+			if(player) player.destroy()
+
+			currentVideo = null
+			last_save.innerText = next_save.innerText = save_count.innerText = '...'
+		}
 	}
+	window.onhashchange()
 
 	function lowerBound(value, array) {
 		let low = 0;
