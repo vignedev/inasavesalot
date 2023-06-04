@@ -148,5 +148,5 @@ div.footer .text:first-of-type{ direction: rtl; }
 	cursor: pointer;
 }
 
-.twitter { background-image: url('/assets/img/si/twitter.svg'); }
-.github { background-image: url('/assets/img/si/github.svg'); }
+.twitter { background-image: url('../img/si/twitter.svg'); }
+.github { background-image: url('../img/si/github.svg'); }
