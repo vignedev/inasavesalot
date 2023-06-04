@@ -7,11 +7,27 @@ window.onload = async e => {
 	const
 		last_save = $('#last_save'),
 		next_save = $('#next_save'),
-		save_count = $('#save_count')
+		save_count = $('#save_count'),
+		save_count_header = $('#save_header'),
+		random_msg = $('#random')
 
 	let data = null
 	let currentVideo = null
 	let player = null
+
+	// random messages, as per usual
+	const messages = [
+		'no longer bash-ing this',
+		'wait is that the sun rising',
+		'no i havent slept yet',
+		'my laptop fans died',
+		'no i didnt remove pc fans to keep it quiet',
+		'pure js and html, delightful',
+		'ina is very cute',
+		'wait where\'s the faq',
+		'haphazardly ducttaped together' // in 6 hours
+	]
+	random_msg.innerText = messages[Math.floor(Math.random() * messages.length)]
 
 	// load data
 	try{ data = await (await fetch('assets/videos.json')).json() }
@@ -20,8 +36,6 @@ window.onload = async e => {
 		console.error(err)
 		return
 	}
-
-	console.log(data)
 
 	let index = 0, counter = 0
 	for(const videoId in data){
@@ -82,7 +96,7 @@ window.onload = async e => {
 
 	function update_stats(){
 		const info = data[currentVideo]
-		if(!info || !player) return
+		if(!info || player == null || !player.getCurrentTime) return
 
 		let newly_added = 0
 		if(info.saves.length == 0){ // special case for that one time ina did not save
@@ -107,6 +121,14 @@ window.onload = async e => {
 		}
 		const total = info.start + newly_added
 		save_count.innerText = `${total} time${total == 1 ? '' : 's'}`
+
+		if(player.getPlayerState() == 5){
+			save_count_header.innerText = `TOTAL SAVES`
+			const total = info.start + info.saves.length
+			save_count.innerText = `${total} time${total == 1 ? '' : 's'}`
+		}else{
+			save_count_header.innerText = `CURRENTLY SAVED`
+		}
 	}
 
 	async function load_video(videoId){

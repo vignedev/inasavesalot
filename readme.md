@@ -6,6 +6,8 @@ Basically, Ina saves quite a lot and it was most notable during her Breath of th
 
 A year ago? Two years ago? Dunno, time flies by quick, I made [`inadoki`](https://github.com/vignedev/inadoki), which monitored Ina's heart rate monitor during her Horror Week. That project was written in the same way like this one, at 5 AM with a ton of caffeine coursing through my blood veins. However, this project will differ a bit from the other one, most notably by using Python instead of Bash-ing my way through it.
 
+It is not as polished as `inadoki`, since I have made this in a spur of a moment and in a spent only a few hours on it.
+
 ## Usage
 
 This project is specifically tailored to detect the BoTW saving dialog and it is quite simple. To use this, you basically run:
