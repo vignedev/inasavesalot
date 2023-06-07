@@ -25,7 +25,8 @@ window.onload = async e => {
 		'pure js and html, delightful',
 		'ina is very cute',
 		'wait where\'s the faq',
-		'haphazardly ducttaped together' // in 6 hours
+		'haphazardly ducttaped together', // in 6 hours
+		'my back hurts owie'
 	]
 	random_msg.innerText = messages[Math.floor(Math.random() * messages.length)]
 
