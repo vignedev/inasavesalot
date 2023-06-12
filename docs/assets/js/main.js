@@ -124,7 +124,7 @@ window.onload = async e => {
 			}else if(index == info.saves.length){ // last item
 				last_save.innerText = get_wordy_time(currentTime - info.saves[index-1], ' ago')
 				last_save.onclick = e => player.seekTo(info.saves[index-1])
-				next_save.innerText = 'next stream'
+				next_save.innerText = (currentVideo == 'GKv9Kgm-zoE') ? 'probably in ToTK' : 'next stream'
 				next_save.onclick = null
 				newly_added = index
 			}else{ // middle
