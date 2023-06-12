@@ -1,15 +1,15 @@
 body{
 	display: flex;
-	justify-content: center;
+	justify-content: center; align-items: center;
 	background: rgb(113,98,54);
 	font-family: sans-serif;
-	/*background: linear-gradient(180deg, rgba(113,98,54,1) 0%, rgba(78,66,38,1) 100%);*/
+	/* background: linear-gradient(180deg, rgba(113,98,54,1) 0%, rgba(78,66,38,1) 100%); */
 }
 
 div.container {
     max-width: 80vw;
     width: 50rem;
-    padding-top: 8rem;
+    /* padding-top: 8rem; */
 }
 
 div.box {
